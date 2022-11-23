@@ -21,6 +21,49 @@ async function run() {
   try {
     const usersCollection = client.db("resale-products").collection("users");
 
+    // Save user email & generate JWT
+    app.put("/user/:email", async (req, res) => {
+      const email = req.params.email;
+      const user = req.body;
+      const filter = { email: email };
+      const options = { upsert: true };
+      const updateDoc = {
+        $set: user,
+      };
+      const result = await usersCollection.updateOne(
+        filter,
+        updateDoc,
+        options
+      );
+      console.log(result);
+
+      const token = jwt.sign(user, process.env.ACCESS_TOKEN_SECRET, {
+        expiresIn: "1d",
+      });
+      console.log(token);
+      res.send({ result, token });
+    });
+
+    //get a single user by email
+    app.get("/user/:email", async (req, res) => {
+      const email = req.params.email;
+      console.log(email);
+      const query = { email: email };
+      const user = await usersCollection.findOne(query);
+      console.log(user);
+
+      res.send(user);
+    });
+
+    //get All user
+    app.get("/users", async (req, res) => {
+      const query = {};
+      const user = await usersCollection.find(query).toArray();
+      console.log(user);
+
+      res.send(user);
+    });
+
     console.log("DB Connected");
   } finally {
   }
