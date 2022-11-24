@@ -20,6 +20,12 @@ const client = new MongoClient(uri, {
 async function run() {
   try {
     const usersCollection = client.db("resale-products").collection("users");
+    const productsCollection = client
+      .db("resale-products")
+      .collection("products");
+    const carCategoriesCollection = client
+      .db("resale-products")
+      .collection("categories");
 
     // Save user email & generate JWT
     app.put("/user/:email", async (req, res) => {
@@ -63,6 +69,24 @@ async function run() {
 
       res.send(user);
     });
+
+    //get categories
+    app.get("/categories", async (req, res) => {
+      let query = {};
+      const categories = await carCategoriesCollection.find(query).toArray();
+      res.send(categories);
+    });
+
+    app.get("/products/:name", async (req, res) => {
+      const name = req.params.name;
+      console.log(name);
+      const query = { name: name };
+      const categories = await productsCollection.find(query).toArray();
+
+      res.send(categories);
+    });
+
+    //get categories ba name
 
     console.log("DB Connected");
   } finally {
