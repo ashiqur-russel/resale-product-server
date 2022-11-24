@@ -26,6 +26,9 @@ async function run() {
     const carCategoriesCollection = client
       .db("resale-products")
       .collection("categories");
+    const bookingsCollection = client
+      .db("resale-products")
+      .collection("bookings");
 
     // Save user email & generate JWT
     app.put("/user/:email", async (req, res) => {
@@ -86,7 +89,22 @@ async function run() {
       res.send(categories);
     });
 
-    //get categories ba name
+    //get all products
+    app.get("/products", async (req, res) => {
+      const name = req.query.name;
+      console.log(name);
+      const query = { name: name };
+      const categories = await productsCollection.find(query).toArray();
+
+      res.send(categories);
+    });
+
+    //set bookings
+    app.post("/bookings", async (req, res) => {
+      const booking = req.body;
+      const result = await bookingsCollection.insertOne(booking);
+      res.send(result);
+    });
 
     console.log("DB Connected");
   } finally {
