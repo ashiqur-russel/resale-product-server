@@ -98,6 +98,12 @@ async function run() {
 
       res.send(categories);
     });
+    app.post("/products", async (req, res) => {
+      const saveProduct = req.body;
+
+      const result = await productsCollection.insertOne(saveProduct);
+      res.send(result);
+    });
 
     //set bookings
     app.post("/bookings", async (req, res) => {
