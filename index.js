@@ -1,6 +1,6 @@
 const express = require("express");
 const cors = require("cors");
-const { MongoClient, ServerApiVersion } = require("mongodb");
+const { MongoClient, ServerApiVersion, ObjectId } = require("mongodb");
 const jwt = require("jsonwebtoken");
 require("dotenv").config();
 const port = process.removeListener.PORT || 8000;
@@ -16,6 +16,23 @@ const client = new MongoClient(uri, {
   useUnifiedTopology: true,
   serverApi: ServerApiVersion.v1,
 });
+function verifyJWT(req, res, next) {
+  const authHeader = req.headers.authorization;
+  console.log("auth", authHeader);
+  if (!authHeader) {
+    return res.status(401).send("unauthorized access");
+  }
+
+  const token = authHeader.split(" ")[1];
+  console.log(token);
+  jwt.verify(token, process.env.ACCESS_TOKEN, function (err, decoded) {
+    if (err) {
+      return res.status(403).send({ message: "forbidden access" });
+    }
+    req.decoded = decoded;
+    next();
+  });
+}
 
 async function run() {
   try {
@@ -29,11 +46,15 @@ async function run() {
     const bookingsCollection = client
       .db("resale-products")
       .collection("bookings");
+    const advertiseCollection = client
+      .db("resale-products")
+      .collection("advertise");
 
     // Save user email & generate JWT
     app.put("/user/:email", async (req, res) => {
       const email = req.params.email;
       const user = req.body;
+      console.log("user", user);
       const filter = { email: email };
       const options = { upsert: true };
       const updateDoc = {
@@ -90,14 +111,47 @@ async function run() {
     });
 
     //get all products
-    app.get("/products", async (req, res) => {
+    /*  app.get("/products ", async (req, res) => {
       const name = req.query.name;
       console.log(name);
       const query = { name: name };
-      const categories = await productsCollection.find(query).toArray();
+      const result = await productsCollection.find(query).toArray();
 
-      res.send(categories);
+      res.send(result);
+    }); */
+
+    //getAllProducts by email
+    app.get("/products", async (req, res) => {
+      let query = {};
+      const email = req.query.email;
+      if (email) {
+        query = {
+          email: email,
+        };
+      }
+      const products = await productsCollection.find(query).toArray();
+
+      res.send(products);
     });
+
+    //Get Single product from adviertised
+
+    app.get("/products/:id", async (req, res) => {
+      const id = req.params.id;
+      console.log(id);
+      const query = { _id: ObjectId(id) };
+      const result = await productsCollection.findOne(query);
+      res.send(result);
+    });
+    //myproducts
+    app.get("/my-products", async (req, res) => {
+      const email = req.query.email;
+
+      const query = { email: email };
+      const result = await productsCollection.find(query).toArray();
+      res.send(result);
+    });
+
     app.post("/products", async (req, res) => {
       const saveProduct = req.body;
 
@@ -108,7 +162,86 @@ async function run() {
     //set bookings
     app.post("/bookings", async (req, res) => {
       const booking = req.body;
+      console.log(booking);
       const result = await bookingsCollection.insertOne(booking);
+      console.log(result);
+      res.send(result);
+    });
+
+    //get bookings
+    app.get("/bookings", async (req, res) => {
+      let query = {};
+
+      const email = req.query.email;
+      console.log(email);
+      if (email) {
+        query = { buyerEmail: email };
+      }
+      const bookings = await bookingsCollection.find(query).toArray();
+      res.send(bookings);
+    });
+
+    // post advertise item
+    app.post("/publish", async (req, res) => {
+      const advertise = req.body;
+      console.log(advertise);
+      const result = await advertiseCollection.insertOne(advertise);
+      console.log(result);
+      res.send(result);
+    });
+
+    /*     app.put("/publish/:id", async (req, res) => {
+      try {
+        const id = req.params.id;
+        const data = req.body;
+        console.log("data", data);
+        const filter = { _id: ObjectId(id) };
+        const options = { upsert: true };
+        const updateDoc = {
+          $set: data,
+        };
+        const result = await productsCollection.updateOne(
+          filter,
+          updateDoc,
+          options
+        );
+        console.log("result", result);
+
+        res.send(result);
+      } catch (err) {
+        console.log(err);
+      }
+    }); */
+
+    app.put("/publish/:id", async (req, res) => {
+      try {
+        const id = req.params.id;
+        const data = req.body;
+        console.log("data", data);
+        const filter = { _id: ObjectId(id) };
+        const options = { upsert: true };
+        const updateDoc = {
+          $set: {
+            advertised: "yes",
+          },
+        };
+        const result = await productsCollection.updateOne(
+          filter,
+          updateDoc,
+          options
+        );
+        console.log("result", result);
+
+        res.send(result);
+      } catch (err) {
+        console.log(err);
+      }
+    });
+
+    //get Advertised product
+    app.get("/addvertise", async (req, res) => {
+      const query = {};
+      const result = await advertiseCollection.find(query).toArray();
       res.send(result);
     });
 
@@ -119,4 +252,4 @@ async function run() {
 
 run().catch(console.log());
 
-app.listen(port, () => console.log(`Dpctprs Portal running on ${port}`));
+app.listen(port, () => console.log(` Portal running on ${port}`));
