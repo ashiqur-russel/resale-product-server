@@ -77,20 +77,19 @@ async function run() {
     //get a single user by email
     app.get("/user/:email", async (req, res) => {
       const email = req.params.email;
-      console.log(email);
       const query = { email: email };
       const user = await usersCollection.findOne(query);
-      console.log(user);
-
       res.send(user);
     });
 
     //get All user
     app.get("/users", async (req, res) => {
-      const query = {};
+      const email = req.query.email;
+      let query = {};
+      if (email) {
+        query = { email: email };
+      }
       const user = await usersCollection.find(query).toArray();
-      console.log(user);
-
       res.send(user);
     });
 
@@ -103,10 +102,8 @@ async function run() {
 
     app.get("/products/:name", async (req, res) => {
       const name = req.params.name;
-      console.log(name);
       const query = { name: name };
       const categories = await productsCollection.find(query).toArray();
-
       res.send(categories);
     });
 
@@ -130,23 +127,12 @@ async function run() {
         };
       }
       const products = await productsCollection.find(query).toArray();
-
       res.send(products);
     });
 
-    //Get Single product from adviertised
-
-    app.get("/products/:id", async (req, res) => {
-      const id = req.params.id;
-      console.log(id);
-      const query = { _id: ObjectId(id) };
-      const result = await productsCollection.findOne(query);
-      res.send(result);
-    });
     //myproducts
     app.get("/my-products", async (req, res) => {
       const email = req.query.email;
-
       const query = { email: email };
       const result = await productsCollection.find(query).toArray();
       res.send(result);
@@ -154,26 +140,30 @@ async function run() {
 
     app.post("/products", async (req, res) => {
       const saveProduct = req.body;
-
       const result = await productsCollection.insertOne(saveProduct);
+      res.send(result);
+    });
+
+    //delete product
+    app.delete("/product/:id", async (req, res) => {
+      const id = req.params.id;
+      console.log(id);
+      const query = { _id: ObjectId(id) };
+      const result = productsCollection.deleteOne(query);
       res.send(result);
     });
 
     //set bookings
     app.post("/bookings", async (req, res) => {
       const booking = req.body;
-      console.log(booking);
       const result = await bookingsCollection.insertOne(booking);
-      console.log(result);
       res.send(result);
     });
 
     //get bookings
     app.get("/bookings", async (req, res) => {
       let query = {};
-
       const email = req.query.email;
-      console.log(email);
       if (email) {
         query = { buyerEmail: email };
       }
@@ -184,9 +174,7 @@ async function run() {
     // post advertise item
     app.post("/publish", async (req, res) => {
       const advertise = req.body;
-      console.log(advertise);
       const result = await advertiseCollection.insertOne(advertise);
-      console.log(result);
       res.send(result);
     });
 
@@ -216,8 +204,6 @@ async function run() {
     app.put("/publish/:id", async (req, res) => {
       try {
         const id = req.params.id;
-        const data = req.body;
-        console.log("data", data);
         const filter = { _id: ObjectId(id) };
         const options = { upsert: true };
         const updateDoc = {
@@ -230,8 +216,6 @@ async function run() {
           updateDoc,
           options
         );
-        console.log("result", result);
-
         res.send(result);
       } catch (err) {
         console.log(err);
@@ -242,6 +226,15 @@ async function run() {
     app.get("/addvertise", async (req, res) => {
       const query = {};
       const result = await advertiseCollection.find(query).toArray();
+      res.send(result);
+    });
+
+    //Get advertised item
+
+    app.get("/advertiseditem/:prodid", async (req, res) => {
+      const id = req.params.prodid;
+      const query = { _id: ObjectId(id) };
+      const result = await productsCollection.findOne(query);
       res.send(result);
     });
 
