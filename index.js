@@ -1,8 +1,11 @@
 const express = require("express");
 const cors = require("cors");
+require("dotenv").config();
+
+const stripe = require("stripe")(process.env.STRIPE_SECRET_KEY);
+
 const { MongoClient, ServerApiVersion, ObjectId } = require("mongodb");
 const jwt = require("jsonwebtoken");
-require("dotenv").config();
 const port = process.removeListener.PORT || 8000;
 const app = express();
 //middleare
@@ -49,6 +52,9 @@ async function run() {
     const advertiseCollection = client
       .db("resale-products")
       .collection("advertise");
+    const paymentsCollection = client
+      .db("resale-products")
+      .collection("payments");
 
     // Save user email & generate JWT
     app.put("/user/:email", async (req, res) => {
@@ -105,6 +111,34 @@ async function run() {
       const query = { name: name };
       const categories = await productsCollection.find(query).toArray();
       res.send(categories);
+    });
+
+    //STRIPE PAYMENT
+    app.post("/create-payment-intent", async (req, res) => {
+      const booking = req.body;
+      const price = booking.price;
+      const amount = price * 100;
+
+      try {
+        const paymentIntent = await stripe.paymentIntents.create({
+          currency: "usd",
+          amount: amount,
+          payment_method_types: ["card"],
+        });
+        res.send({
+          clientSecret: paymentIntent.client_secret,
+        });
+      } catch (err) {
+        console.log("Intent", err);
+      }
+    });
+
+    //payment
+
+    app.post("/payments", async (req, res) => {
+      const payment = req.body;
+      const result = await paymentsCollection.insertOne(payment);
+      res.send(result);
     });
 
     //get all products
@@ -169,6 +203,15 @@ async function run() {
       }
       const bookings = await bookingsCollection.find(query).toArray();
       res.send(bookings);
+    });
+
+    //Get booking by id
+
+    app.get("/bookings/:id", async (req, res) => {
+      const id = req.params.id;
+      const query = { _id: ObjectId(id) };
+      const booking = await bookingsCollection.findOne(query);
+      res.send(booking);
     });
 
     // post advertise item
