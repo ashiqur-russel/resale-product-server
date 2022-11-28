@@ -11,6 +11,27 @@ const app = express();
 //middleare
 app.use(cors());
 app.use(express.json());
+function verifyJWT(req, res, next) {
+  try {
+    const authHeader = req.headers;
+    console.log("Auth Header==", authHeader);
+    if (!authHeader) {
+      return res.status(401).send("unauthorized access");
+    }
+
+    const token = authHeader.split(" ")[1];
+    console.log("Token verify fznction==", token);
+    jwt.verify(token, process.env.ACCESS_TOKEN, function (err, decoded) {
+      if (err) {
+        return res.status(403).send({ message: "forbidden access" });
+      }
+      req.decoded = decoded;
+    });
+    next();
+  } catch (err) {
+    console.log(err);
+  }
+}
 
 const uri = `mongodb+srv://${process.env.DB_USER}:${process.env.DB_PASSWORD}@cluster0.irpitar.mongodb.net/?retryWrites=true&w=majority`;
 
@@ -19,23 +40,6 @@ const client = new MongoClient(uri, {
   useUnifiedTopology: true,
   serverApi: ServerApiVersion.v1,
 });
-function verifyJWT(req, res, next) {
-  const authHeader = req.headers.authorization;
-  console.log("auth", authHeader);
-  if (!authHeader) {
-    return res.status(401).send("unauthorized access");
-  }
-
-  const token = authHeader.split(" ")[1];
-  console.log(token);
-  jwt.verify(token, process.env.ACCESS_TOKEN, function (err, decoded) {
-    if (err) {
-      return res.status(403).send({ message: "forbidden access" });
-    }
-    req.decoded = decoded;
-    next();
-  });
-}
 
 async function run() {
   try {
@@ -60,7 +64,6 @@ async function run() {
     app.put("/user/:email", async (req, res) => {
       const email = req.params.email;
       const user = req.body;
-      console.log("user", user);
       const filter = { email: email };
       const options = { upsert: true };
       const updateDoc = {
@@ -71,12 +74,11 @@ async function run() {
         updateDoc,
         options
       );
-      console.log(result);
 
-      const token = jwt.sign(user, process.env.ACCESS_TOKEN_SECRET, {
+      const token = jwt.sign(user, process.env.ACCESS_TOKEN, {
         expiresIn: "1d",
       });
-      console.log(token);
+      console.log("generate token", token);
       res.send({ result, token });
     });
 
@@ -96,6 +98,17 @@ async function run() {
         query = { email: email };
       }
       const user = await usersCollection.find(query).toArray();
+      res.send(user);
+    });
+
+    // delete user
+
+    app.delete("/user", async (req, res) => {
+      const email = req.query.email;
+
+      const query = { email: email };
+
+      const user = await usersCollection.deleteOne(query);
       res.send(user);
     });
 
@@ -134,22 +147,37 @@ async function run() {
     });
 
     //payment
-
     app.post("/payments", async (req, res) => {
       const payment = req.body;
       const result = await paymentsCollection.insertOne(payment);
+      const id = payment.bookingId;
+      const productId = payment.productId;
+      const productFilter = { product_id: productId };
+      const filter = { _id: ObjectId(id) };
+      const updatedDoc = {
+        $set: {
+          paid: true,
+          isBooked: "yes",
+          transactionId: payment.transactionId,
+        },
+      };
+
+      const productFilterUpdate = { _id: ObjectId(productId) };
+
+      const newUpdatedDocProduct = await productsCollection.deleteOne(
+        productFilterUpdate
+      );
+
+      const deleteProductFromBooking = await advertiseCollection.deleteOne(
+        productFilter
+      );
+
+      const updatedResult = await bookingsCollection.updateOne(
+        filter,
+        updatedDoc
+      );
       res.send(result);
     });
-
-    //get all products
-    /*  app.get("/products ", async (req, res) => {
-      const name = req.query.name;
-      console.log(name);
-      const query = { name: name };
-      const result = await productsCollection.find(query).toArray();
-
-      res.send(result);
-    }); */
 
     //getAllProducts by email
     app.get("/products", async (req, res) => {
@@ -181,10 +209,25 @@ async function run() {
     //delete product
     app.delete("/product/:id", async (req, res) => {
       const id = req.params.id;
-      console.log(id);
-      const query = { _id: ObjectId(id) };
-      const result = productsCollection.deleteOne(query);
-      res.send(result);
+      try {
+        const query = { _id: ObjectId(id) };
+        const bookingObjectQuery = { productId: id };
+        const advertisedObjectQuery = { product_id: id };
+
+        console.log(id, query, bookingObjectQuery, advertisedObjectQuery);
+        const bookingObjectDelete =
+          bookingsCollection.deleteOne(bookingObjectQuery);
+        const advertisedObjectDelete = advertiseCollection.deleteOne(
+          advertisedObjectQuery
+        );
+        const result = productsCollection.deleteOne(query);
+        res.send(result);
+      } catch (err) {
+        console.log(err);
+        res
+          .status(201)
+          .send({ status: false, message: "There is something wrong" });
+      }
     });
 
     //set bookings
@@ -206,7 +249,6 @@ async function run() {
     });
 
     //Get booking by id
-
     app.get("/bookings/:id", async (req, res) => {
       const id = req.params.id;
       const query = { _id: ObjectId(id) };
@@ -220,29 +262,6 @@ async function run() {
       const result = await advertiseCollection.insertOne(advertise);
       res.send(result);
     });
-
-    /*     app.put("/publish/:id", async (req, res) => {
-      try {
-        const id = req.params.id;
-        const data = req.body;
-        console.log("data", data);
-        const filter = { _id: ObjectId(id) };
-        const options = { upsert: true };
-        const updateDoc = {
-          $set: data,
-        };
-        const result = await productsCollection.updateOne(
-          filter,
-          updateDoc,
-          options
-        );
-        console.log("result", result);
-
-        res.send(result);
-      } catch (err) {
-        console.log(err);
-      }
-    }); */
 
     app.put("/publish/:id", async (req, res) => {
       try {
