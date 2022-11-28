@@ -8,6 +8,7 @@ const { MongoClient, ServerApiVersion, ObjectId } = require("mongodb");
 const jwt = require("jsonwebtoken");
 const port = process.removeListener.PORT || 8000;
 const app = express();
+
 //middleare
 app.use(cors());
 app.use(express.json());
@@ -39,6 +40,15 @@ const client = new MongoClient(uri, {
   useNewUrlParser: true,
   useUnifiedTopology: true,
   serverApi: ServerApiVersion.v1,
+});
+
+app.get("/", async (req, res) => {
+  res.send({
+    status: "200",
+    message: "Auto-Haus Server !",
+    version: "1.0.0",
+    author: "ashiqur russel",
+  });
 });
 
 async function run() {
@@ -86,6 +96,18 @@ async function run() {
     app.get("/user/:email", async (req, res) => {
       const email = req.params.email;
       const query = { email: email };
+      const options = { upsert: true };
+      const updatedDoc = {
+        $set: {
+          sellerVerified: "verified",
+        },
+      };
+      const updateProduct = await productsCollection.updateMany(
+        query,
+        updatedDoc,
+        options
+      );
+      console.log(updateProduct);
       const user = await usersCollection.findOne(query);
       res.send(user);
     });
@@ -110,6 +132,27 @@ async function run() {
 
       const user = await usersCollection.deleteOne(query);
       res.send(user);
+    });
+
+    app.put("/product/:id", async (req, res) => {
+      const id = req.params.id;
+
+      //const findProdOnAdvertise = { _id: ObjectId(id) };
+      const query = { _id: ObjectId(id) };
+
+      const options = { upsert: true };
+      const updatedDoc = {
+        $set: {
+          reported: true,
+        },
+      };
+
+      const result = await productsCollection.updateOne(
+        query,
+        updatedDoc,
+        options
+      );
+      res.send(result);
     });
 
     //get categories
@@ -215,9 +258,10 @@ async function run() {
         const advertisedObjectQuery = { product_id: id };
 
         console.log(id, query, bookingObjectQuery, advertisedObjectQuery);
-        const bookingObjectDelete =
-          bookingsCollection.deleteOne(bookingObjectQuery);
-        const advertisedObjectDelete = advertiseCollection.deleteOne(
+        const bookingObjectDelete = await bookingsCollection.deleteOne(
+          bookingObjectQuery
+        );
+        const advertisedObjectDelete = await advertiseCollection.deleteOne(
           advertisedObjectQuery
         );
         const result = productsCollection.deleteOne(query);
