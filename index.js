@@ -72,6 +72,7 @@ async function run() {
 
     // Save user email & generate JWT
     app.put("/user/:email", async (req, res) => {
+      console.log("inside '/user/:email");
       const email = req.params.email;
       const user = req.body;
       const filter = { email: email };
@@ -79,11 +80,14 @@ async function run() {
       const updateDoc = {
         $set: user,
       };
+      console.log("## updateDoc ## ", updateDoc);
       const result = await usersCollection.updateOne(
         filter,
         updateDoc,
         options
       );
+
+      console.log("## result ## ", result);
 
       const token = jwt.sign(user, process.env.ACCESS_TOKEN, {
         expiresIn: "1d",
@@ -91,23 +95,57 @@ async function run() {
       console.log("generate token", token);
       res.send({ result, token });
     });
-
-    //get a single user by email
-    app.get("/user/:email", async (req, res) => {
+    //
+    // Save user email & generate JWT
+    app.put("/users/:email", async (req, res) => {
+      console.log("inside pu users");
       const email = req.params.email;
-      const query = { email: email };
+      const user = req.body;
+      console.log("req###", email);
+      const filter = { email: email };
+      const newFilter = { sellerEmail: email };
       const options = { upsert: true };
-      const updatedDoc = {
+
+      const updatedDocp = {
         $set: {
           sellerVerified: "verified",
         },
       };
+      console.log("## updatedDocp ## ", updatedDocp);
+
       const updateProduct = await productsCollection.updateMany(
-        query,
-        updatedDoc,
+        filter,
+        updatedDocp,
         options
       );
-      console.log(updateProduct);
+
+      console.log("## updateProduct ## ", updateProduct);
+      const updateaddveritse = await advertiseCollection.updateMany(
+        newFilter,
+        updatedDocp,
+        options
+      );
+      console.log("## updateaddveritse ## ", updateaddveritse);
+
+      const updateDoc = {
+        $set: user,
+      };
+      console.log("## updateDoc ## ", updateDoc);
+
+      const result = await usersCollection.updateOne(
+        filter,
+        updateDoc,
+        options
+      );
+      console.log("## result ## ", result);
+
+      res.send(result);
+    });
+    //get a single user by email
+    app.get("/user/:email", async (req, res) => {
+      const email = req.params.email;
+      const query = { email: email };
+
       const user = await usersCollection.findOne(query);
       res.send(user);
     });
@@ -138,21 +176,23 @@ async function run() {
       const id = req.params.id;
 
       //const findProdOnAdvertise = { _id: ObjectId(id) };
-      const query = { _id: ObjectId(id) };
+      if (id) {
+        const query = { _id: ObjectId(id) };
 
-      const options = { upsert: true };
-      const updatedDoc = {
-        $set: {
-          reported: true,
-        },
-      };
+        const options = { upsert: true };
+        const updatedDoc = {
+          $set: {
+            reported: true,
+          },
+        };
 
-      const result = await productsCollection.updateOne(
-        query,
-        updatedDoc,
-        options
-      );
-      res.send(result);
+        const result = await productsCollection.updateOne(
+          query,
+          updatedDoc,
+          options
+        );
+        res.send(result);
+      }
     });
 
     //get categories
