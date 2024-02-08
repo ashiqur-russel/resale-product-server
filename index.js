@@ -6,7 +6,7 @@ const stripe = require("stripe")(process.env.STRIPE_SECRET_KEY);
 
 const { MongoClient, ServerApiVersion, ObjectId } = require("mongodb");
 const jwt = require("jsonwebtoken");
-const port = process.removeListener.PORT || 8000;
+const port = process.removeListener.PORT || process.env.PORT;
 const app = express();
 
 //middleare
@@ -35,6 +35,11 @@ function verifyJWT(req, res, next) {
 }
 
 const uri = `mongodb+srv://${process.env.DB_USER}:${process.env.DB_PASSWORD}@cluster0.irpitar.mongodb.net/?retryWrites=true&w=majority`;
+
+if(uri){
+  console.log('database connected')
+}
+
 
 const client = new MongoClient(uri, {
   useNewUrlParser: true,
