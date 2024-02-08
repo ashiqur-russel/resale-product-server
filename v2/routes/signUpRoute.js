@@ -22,9 +22,9 @@ router.post("/", async (req, res) => {
     };
 
     const user = await User.create(newUser);
+
     return res.status(201).send(user);
   } catch (error) {
-    console.log(error.message);
     res.status(500).send({ message: error.message });
   }
 });

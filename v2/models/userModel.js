@@ -7,7 +7,6 @@ const UserSchema = new mongoose.Schema(
       type: String,
       required: true,
     },
-    // Define the image property
     image: {
       data: Buffer,
       contentType: String,

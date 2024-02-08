@@ -1,8 +1,8 @@
-import express from "express";
-import { User } from "../models/userModel.js"
 import crypto from "crypto";
-import nodemailer from "nodemailer";
 import dotenv from "dotenv";
+import express from "express";
+import nodemailer from "nodemailer";
+import { User } from "../models/userModel.js";
 
 const router = express.Router();
 dotenv.config();
@@ -12,21 +12,20 @@ dotenv.config();
 const emailConfig = {
   service: "Gmail",
   auth: {
-    user: process.env.EMAIL_ADDRESS, // Mail-server address
-    pass: process.env.EMAIL_PASSWORD, // Password
+    user: process.env.EMAIL_ADDRESS,
+    pass: process.env.EMAIL_PASSWORD,
   },
 };
 
 const transporter = nodemailer.createTransport(emailConfig);
 
-// Password reset process
-router.post('/', async (req, res) => {
+router.post("/", async (req, res) => {
   try {
     const { email } = req.body;
 
     // Generate a unique reset token
-    const resetToken = crypto.randomBytes(20).toString('hex');
-    const resetTokenExpiry = Date.now() + 3600000; // Token expires in 1 hour
+    const resetToken = crypto.randomBytes(20).toString("hex");
+    const resetTokenExpiry = Date.now() + 3600000;
 
     // Update user's resetToken and resetTokenExpiry in the database
     const user = await User.findOneAndUpdate(
@@ -39,26 +38,24 @@ router.post('/', async (req, res) => {
     );
 
     if (!user) {
-      return res.status(404).json({ error: 'User not found' });
+      return res.status(404).json({ error: "User not found" });
     }
 
     // Send the password reset email
     const resetLink = `http://localhost:${process.env.PORT}/reset-password?token=${resetToken}`;
     const mailOptions = {
-      from: 'salmantuc@gmail.com', // App mail server address
+      from: process.env.EMAIL_ADDRESS,
       to: email,
-      subject: 'Password Reset',
+      subject: "Password Reset",
       text: `Click the link to reset your password: ${resetLink}`,
     };
 
     await transporter.sendMail(mailOptions);
 
-    res.status(200).json({ message: 'Password reset email sent successfully' });
+    res.status(200).json({ message: "Password reset email sent successfully" });
   } catch (error) {
-    console.error(error);
-    res.status(500).json({ error: 'Internal Server Error' });
+    res.status(500).json({ error: "Internal Server Error" });
   }
 });
-
 
 export default router;

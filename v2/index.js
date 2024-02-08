@@ -16,18 +16,15 @@ app.use(cors());
 app.use(express.json());
 
 //routes
-app.use("/signup", signUpRoute); //sign up route
-app.use("/signin", signInRoute); //sign in route
-app.use("/forgot-password", forgotPasswordRoute); //forgot password route
-app.use("/reset-password", resetPasswordRoute); //reset password route
+app.use("/signup", signUpRoute);
+app.use("/signin", signInRoute);
+app.use("/forgot-password", forgotPasswordRoute);
+app.use("/reset-password", resetPasswordRoute);
 
 // database connection
 mongoose
   .connect(process.env.MONGO_URL)
   .then(() => {
-    console.log("connected");
-    app.listen(process.env.PORT, () => {
-      console.log(`App is listening....`);
-    });
+    app.listen(process.env.PORT);
   })
-  .catch(() => console.log("no connection"));
+  .catch();
